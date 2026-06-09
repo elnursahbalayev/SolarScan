@@ -1,0 +1,15 @@
+# Inference API + try-it demo. CPU image (stub model needs no GPU).
+FROM python:3.12-slim
+
+ENV PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1
+WORKDIR /app
+
+# Install uv for fast, reproducible installs.
+RUN pip install uv
+
+COPY pyproject.toml README.md ./
+COPY src ./src
+RUN uv pip install --system ".[serve]"
+
+EXPOSE 8000
+CMD ["uvicorn", "solarscan.serve.api:app", "--host", "0.0.0.0", "--port", "8000"]

@@ -1,1 +1,46 @@
+# Project brief (kept private)
 energy_ai_flagships.md
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+
+# Tooling caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# uv
+uv.lock
+
+# Data & model artifacts (downloaded/produced, never committed)
+data/raw/
+data/processed/
+data/interim/
+*.pt
+*.pth
+*.onnx
+*.engine
+*.trt
+runs/
+outputs/
+checkpoints/
+wandb/
+
+# Demo / report outputs
+*.pdf
+!docs/**/*.pdf
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+*.swp

@@ -1,0 +1,33 @@
+# SolarScan default configuration.
+# Phase 0 uses the stub model and ignores the train/edge blocks below; they
+# document the intended knobs for Phases 1-2.
+
+pipeline:
+  model: stub          # stub | timm | ultralytics
+  model_version: stub-0.1.0
+
+site:                  # used by yield-loss estimation (ROADMAP §1)
+  module_rated_kw: 0.4
+  peak_sun_hours: 4.5
+
+classifier:            # Phase 1
+  backbone: convnext_tiny
+  input_size: [40, 40]
+  num_classes: 12
+  class_balanced_sampling: true
+
+detector:              # Phase 1
+  arch: yolov11n
+  imgsz: 640
+  conf_threshold: 0.25
+
+train:                 # Phase 1
+  epochs: 50
+  batch_size: 64
+  lr: 0.0003
+  synthetic_augmentation: true
+
+edge:                  # Phase 2
+  precisions: [fp16, int8]
+  devices: [orin-nano, orin-nx]
+  calibration_images: 200
