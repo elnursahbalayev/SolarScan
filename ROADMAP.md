@@ -118,16 +118,28 @@ solarscan/
 1. Train Stage 1+2 in PyTorch.
 2. Export → ONNX (fixed + dynamic shapes).
 3. Build TensorRT engines: FP16 and INT8 (with a calibration set).
-4. Benchmark harness on **both** Orin Nano and Orin NX. Publish:
+4. Benchmark harness across **every backend and device**, apples-to-apples.
 
-   | Device | Precision | FPS | Latency p50 / p95 | mAP / acc | Power (W) |
-   |--------|-----------|-----|-------------------|-----------|-----------|
-   | Orin Nano | FP16 | … | … | … | … |
-   | Orin Nano | INT8 | … | … | … | … |
-   | Orin NX | FP16 | … | … | … | … |
-   | Orin NX | INT8 | … | … | … | … |
+   **Dev baseline (RTX A4000, measured — batch 32, classifier `convnext_nano`):**
 
-5. Show the **accuracy/throughput tradeoff** narrative (INT8 speedup vs mAP drop) — this is the senior-engineer signal.
+   | Backend | Device | Precision | Mean ms | p95 ms | Throughput (img/s) |
+   |---|---|---|---|---|---|
+   | pytorch | RTX A4000 | FP16 | 1.54 | 1.76 | **20,730** |
+   | pytorch | RTX A4000 | FP32 | 2.41 | 2.71 | 13,269 |
+   | onnxruntime | CPU | FP32 | 13.91 | 14.09 | 2,301 |
+   | pytorch | CPU | FP32 | 27.05 | 28.12 | 1,183 |
+
+   FP16 already gives a ~1.6× throughput lift over FP32 on the A4000, and ONNX parity is
+   verified (max abs diff 3.3e-6). The Jetson rows below use the **same harness** on the same ONNX:
+
+   | Backend | Device | Precision | FPS | Latency p50/p95 | acc Δ | Power (W) |
+   |---|---|---|---|---|---|---|
+   | TensorRT | Orin Nano | FP16 | … | … | … | … |
+   | TensorRT | Orin Nano | INT8 | … | … | … | … |
+   | TensorRT | Orin NX | FP16 | … | … | … | … |
+   | TensorRT | Orin NX | INT8 | … | … | … | … |
+
+5. Show the **accuracy/throughput tradeoff** narrative (INT8 speedup vs accuracy drop) — this is the senior-engineer signal.
 
 ---
 
@@ -136,10 +148,12 @@ solarscan/
 **Phase 0 — Thin vertical slice (week 1–2).** `thermal crop → classifier → JSON faults → minimal PDF`. Crude but runs end-to-end. De-risks integration; gives an early demo.
 
 **Phase 1 — Detection + classification core (week 3–6).** Train Stage 1 on the Zenodo UAV set, Stage 2 on InfraredSolarModules. Eval harness, per-class metrics, confusion matrix, model card. Tackle class imbalance + synthetic augmentation here.
+> **Status:** Stage 2 classifier ✅ done — `convnext_nano`, **82.7% acc / 0.704 macro-F1** on held-out test, class-balanced sampling lifts rare faults (Diode-Multi 0.96 recall). See [model card](eval/MODEL_CARD.md). _Next: Stage 1 detector (Ultralytics on the Zenodo UAV set) + synthetic augmentation for the weak classes (Soiling, Cell-Multi, Hot-Spot-Multi)._
 
 **Phase 2 — Edge path (week 6–9).** ONNX → TensorRT → INT8 → cross-device benchmark table. **This is the differentiator — give it real time.**
 
 **Phase 3 — Geo + report (week 9–12).** Stitching/georeferencing on the aerial set + a synthetic farm layout; yield-loss model; severity ranking; polished PDF.
+> **Status:** ✅ done on a synthetic farm. Faults → module ID + GPS ([geo/](src/solarscan/geo/)), GeoJSON export, severity-coloured fault map (matplotlib PNG + interactive folium HTML), and the PDF now embeds the map + per-fault module/GPS + total estimated yield loss. Run: `solarscan demo -i <img> --farm sample`. _Field path is a drop-in: supply measured GCP corners instead of the synthetic bounds. True orthomosaic stitching awaits a real overlapping flight (Stage-1/Zenodo)._
 
 **Phase 4 — Demo & ship (week 12–16).** Deployed try-it demo, 2–3 min video, README polish, "problem we solve" page. Package as an Upwork portfolio piece + reusable proposal blurb.
 

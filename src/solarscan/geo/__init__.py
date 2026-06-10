@@ -1,12 +1,18 @@
-"""[Phase 3] Orthomosaic stitching + georeferencing.
+"""Georeferencing: map faults onto a farm layout, export GeoJSON, render maps.
 
-Maps per-frame pixel detections onto a farm layout in real-world coordinates so
-faults carry GPS and can be plotted on a map. Requires the ``geo`` extra
-(opencv, rasterio, pyproj, folium).
-
-Planned API:
-    stitch(frames) -> orthomosaic
-    georeference(orthomosaic, gcps | flight_log) -> transform
-    locate(detection, transform) -> GeoPoint
-    to_geojson(faults) -> FeatureCollection
+Without real flight telemetry we demonstrate on a documented synthetic farm
+(``FarmLayout``); the same interface accepts measured GCP corners in the field.
 """
+
+from solarscan.geo.farm import FarmLayout
+from solarscan.geo.georef import faults_to_geojson, georeference_faults, write_geojson
+from solarscan.geo.visualize import render_fault_map_html, render_fault_map_png
+
+__all__ = [
+    "FarmLayout",
+    "faults_to_geojson",
+    "georeference_faults",
+    "write_geojson",
+    "render_fault_map_html",
+    "render_fault_map_png",
+]

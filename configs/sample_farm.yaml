@@ -1,0 +1,10 @@
+# Synthetic farm layout for the georeferencing demo (clearly labelled synthetic).
+# Replace lat/lon bounds with measured ground-control-point corners for a real site.
+name: Synthetic Demo Farm
+lat_min: 40.4400
+lat_max: 40.4410
+lon_min: 49.8670
+lon_max: 49.8690
+rows: 4
+cols: 5
+synthetic: true

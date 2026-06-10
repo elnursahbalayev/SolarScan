@@ -13,6 +13,8 @@ from pathlib import Path
 
 from PIL import Image
 
+from solarscan.geo.farm import FarmLayout
+from solarscan.geo.georef import georeference_faults
 from solarscan.models import Detector, FaultClassifier, StubClassifier, StubDetector
 from solarscan.report.yield_loss import estimate_module_loss_kwh
 from solarscan.schemas import Fault, InspectionReport, ReportSummary
@@ -24,13 +26,18 @@ def run_pipeline(
     detector: Detector | None = None,
     classifier: FaultClassifier | None = None,
     model_version: str = "stub-0.1.0",
+    farm: FarmLayout | None = None,
 ) -> InspectionReport:
-    """Run all stages on a single image and return the inspection report."""
+    """Run all stages on a single image and return the inspection report.
+
+    If ``farm`` is given, faults are georeferenced (module_id + GPS) against it.
+    """
     detector = detector or StubDetector()
     classifier = classifier or StubClassifier()
 
     image_path = Path(image_path)
     image = Image.open(image_path)
+    image_w, image_h = image.size
 
     detections = detector.detect(image)
 
@@ -60,6 +67,9 @@ def run_pipeline(
         )
         total_loss_kwh += estimate_module_loss_kwh(fault_class)
 
+    if farm is not None:
+        georeference_faults(faults, farm, image_w, image_h)
+
     summary = ReportSummary(
         n_modules_inspected=len(detections),
         n_faults=len(faults),
@@ -68,15 +78,24 @@ def run_pipeline(
         estimated_total_yield_loss_kwh=round(total_loss_kwh, 3),
     )
 
+    notes = [
+        "Yield-loss figures are estimates (module rated power x fault loss-fraction "
+        "x peak-sun-hours), provided to prioritise O&M, not as metered values.",
+    ]
+    if model_version.startswith("stub"):
+        notes.insert(0, "Output uses a heuristic stub model — not a validated detector.")
+    if farm is not None:
+        notes.append(
+            f"Locations georeferenced against farm layout '{farm.name}'"
+            + (" (SYNTHETIC layout — for demonstration)." if farm.synthetic else ".")
+        )
+    else:
+        notes.append("Georeferencing not applied (no farm layout supplied).")
+
     return InspectionReport(
         source=str(image_path),
         model_version=model_version,
         faults=faults,
         summary=summary,
-        notes=[
-            "Phase-0 output uses a heuristic stub model — not a validated detector.",
-            "Yield-loss figures are estimates (module rated power x fault loss-fraction "
-            "x peak-sun-hours), provided to prioritise O&M, not as metered values.",
-            "Georeferencing not yet applied (Phase 3); locations shown as available.",
-        ],
+        notes=notes,
     )

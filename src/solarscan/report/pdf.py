@@ -9,6 +9,7 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.units import cm
 from reportlab.platypus import (
+    Image,
     Paragraph,
     SimpleDocTemplate,
     Spacer,
@@ -20,8 +21,13 @@ from solarscan.schemas import InspectionReport
 from solarscan.taxonomy import SEVERITY_RANK, Severity
 
 
-def write_pdf_report(report: InspectionReport, out_path: str | Path) -> Path:
-    """Render ``report`` to a PDF at ``out_path``; returns the path written."""
+def write_pdf_report(
+    report: InspectionReport, out_path: str | Path, map_image: str | Path | None = None
+) -> Path:
+    """Render ``report`` to a PDF at ``out_path``; returns the path written.
+
+    If ``map_image`` is given (a fault-map PNG), it is embedded after the summary.
+    """
     out_path = Path(out_path)
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -62,13 +68,18 @@ def write_pdf_report(report: InspectionReport, out_path: str | Path) -> Path:
     flow.append(summary_tbl)
     flow.append(Spacer(1, 0.5 * cm))
 
+    if map_image is not None and Path(map_image).exists():
+        flow.append(Paragraph("Fault map", styles["Heading2"]))
+        flow.append(Image(str(map_image), width=15 * cm, height=11.25 * cm))
+        flow.append(Spacer(1, 0.5 * cm))
+
     flow.append(Paragraph("Faults (severity-ranked)", styles["Heading2"]))
     ranked = sorted(
         report.faults,
         key=lambda f: (SEVERITY_RANK[f.severity], f.confidence),
         reverse=True,
     )
-    header = ["#", "Fault", "Severity", "Conf.", "Yield loss", "Location"]
+    header = ["#", "Fault", "Severity", "Conf.", "Yield loss", "Module", "Location"]
     rows = [header]
     for i, f in enumerate(ranked, 1):
         loc = f"{f.location.lat:.5f}, {f.location.lon:.5f}" if f.location else "—"
@@ -79,6 +90,7 @@ def write_pdf_report(report: InspectionReport, out_path: str | Path) -> Path:
                 f.severity.value,
                 f"{f.confidence:.2f}",
                 f"{f.estimated_yield_loss_fraction * 100:.0f}%",
+                f.module_id or "—",
                 loc,
             ]
         )

@@ -29,6 +29,8 @@ ml = [
     "onnx>=1.16",
     "onnxruntime>=1.18",
     "scikit-learn>=1.4",
+    "matplotlib>=3.8",
+    "tqdm>=4.66",
 ]
 serve = [
     "fastapi>=0.110",
