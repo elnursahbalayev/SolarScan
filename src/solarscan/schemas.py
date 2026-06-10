@@ -64,3 +64,5 @@ class InspectionReport(BaseModel):
     faults: list[Fault]
     summary: ReportSummary
     notes: list[str] = Field(default_factory=list)
+    # All module regions the detector proposed (faulty + healthy), for rendering.
+    detections: list[Detection] = Field(default_factory=list)

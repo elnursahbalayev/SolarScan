@@ -51,6 +51,19 @@ class FarmLayout:
             cols=5,
         )
 
+    @classmethod
+    def sample_aerial(cls) -> FarmLayout:
+        """A finer synthetic grid for a wide aerial frame (~dozens of modules)."""
+        return cls(
+            name="Synthetic Demo Farm (aerial)",
+            lat_min=40.4400,
+            lat_max=40.4415,
+            lon_min=49.8670,
+            lon_max=49.8700,
+            rows=10,
+            cols=14,
+        )
+
     def locate(self, bbox: BBox, image_w: float, image_h: float) -> tuple[str, GeoPoint]:
         """Map a bbox centre in image space to (module_id, GPS centroid).
 

@@ -98,4 +98,5 @@ def run_pipeline(
         faults=faults,
         summary=summary,
         notes=notes,
+        detections=detections,
     )

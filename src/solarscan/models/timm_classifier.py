@@ -43,7 +43,11 @@ class TimmClassifier(torch.nn.Module):
     def classify(self, crop: PILImage) -> tuple[FaultClass, dict[FaultClass, float]]:
         self.eval()
         device = next(self.parameters()).device
-        x = self._eval_tf(crop.convert("RGB")).unsqueeze(0).to(device)
+        # Training data was grayscale IR replicated to 3 channels. Reduce any input
+        # (incl. RGB-colourised thermal from another camera) to luminance first, so
+        # inference matches the training domain instead of feeding unseen colour.
+        rgb = crop.convert("L").convert("RGB")
+        x = self._eval_tf(rgb).unsqueeze(0).to(device)
         probs = F.softmax(self.forward(x), dim=1).squeeze(0).tolist()
         prob_map = {c: float(p) for c, p in zip(ALL_CLASSES, probs, strict=True)}
         predicted = max(prob_map, key=prob_map.get)

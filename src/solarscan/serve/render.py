@@ -14,7 +14,7 @@ import io
 
 from PIL import Image, ImageDraw, ImageFont
 
-from solarscan.schemas import Fault
+from solarscan.schemas import Detection, Fault
 from solarscan.taxonomy import Severity
 
 SEVERITY_RGB = {
@@ -41,8 +41,22 @@ def thermal_colormap(image: Image.Image) -> Image.Image:
         return gray.convert("RGB")
 
 
-def draw_overlay(image: Image.Image, faults: list[Fault], upscale: int = 3) -> Image.Image:
-    """Render the thermal frame with severity-coloured fault boxes + labels."""
+HEALTHY_RGB = (74, 222, 128)  # green for detected, non-faulty modules
+
+
+def draw_overlay(
+    image: Image.Image,
+    faults: list[Fault],
+    detections: list[Detection] | None = None,
+    upscale: int = 3,
+    label_faults: bool = True,
+) -> Image.Image:
+    """Render the thermal frame with all detected modules + severity-coloured faults.
+
+    Healthy detections (if provided) are drawn as thin green boxes; faults are drawn
+    thicker in their severity colour on top. ``label_faults`` adds the class text
+    (turn off for dense wide frames where labels would overlap).
+    """
     base = thermal_colormap(image)
     if upscale > 1:
         base = base.resize((base.width * upscale, base.height * upscale), Image.NEAREST)
@@ -51,6 +65,14 @@ def draw_overlay(image: Image.Image, faults: list[Fault], upscale: int = 3) -> I
         font = ImageFont.load_default()
     except Exception:  # pragma: no cover
         font = None
+
+    fault_boxes = {(round(f.bbox.x), round(f.bbox.y)) for f in faults if f.bbox}
+    for d in detections or []:
+        if (round(d.bbox.x), round(d.bbox.y)) in fault_boxes:
+            continue  # drawn below as a fault
+        x0, y0 = d.bbox.x * upscale, d.bbox.y * upscale
+        x1, y1 = (d.bbox.x + d.bbox.w) * upscale, (d.bbox.y + d.bbox.h) * upscale
+        draw.rectangle([x0, y0, x1, y1], outline=HEALTHY_RGB, width=1)
 
     for f in faults:
         if f.bbox is None:
@@ -61,8 +83,8 @@ def draw_overlay(image: Image.Image, faults: list[Fault], upscale: int = 3) -> I
         y1 = (f.bbox.y + f.bbox.h) * upscale
         color = SEVERITY_RGB.get(f.severity, (148, 163, 184))
         draw.rectangle([x0, y0, x1, y1], outline=color, width=2)
-        label = f.fault_class.value
-        draw.text((x0 + 2, y0 + 2), label, fill=color, font=font)
+        if label_faults:
+            draw.text((x0 + 2, y0 + 2), f.fault_class.value, fill=color, font=font)
     return base
 
 

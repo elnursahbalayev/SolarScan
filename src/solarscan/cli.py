@@ -27,11 +27,14 @@ def demo(
     checkpoint: Path | None = typer.Option(
         None, "--checkpoint", "-c", help="Trained classifier checkpoint (.pt); omit to use stub."
     ),
+    detector: Path | None = typer.Option(
+        None, "--detector", "-d", help="YOLO module-detector weights (.pt); omit to tile the frame."
+    ),
     farm: str | None = typer.Option(
-        None, "--farm", help="Farm layout YAML for georeferencing, or 'sample' for the demo farm."
+        None, "--farm", help="Farm YAML, or 'sample' / 'aerial' for a synthetic demo layout."
     ),
 ) -> None:
-    """Run the end-to-end pipeline on one image: -> JSON + PDF (+ GeoJSON & map if --farm)."""
+    """Run the end-to-end pipeline on one image: -> JSON + PDF (+ GeoJSON, map, overlay)."""
     if not input.exists():
         console.print(f"[red]Input not found:[/red] {input}")
         raise typer.Exit(1)
@@ -46,20 +49,40 @@ def demo(
         classifier = TimmClassifier.load(checkpoint)
         model_version = f"{classifier.backbone_name}:{checkpoint.name}"
 
+    det = None
+    if detector is not None:
+        from solarscan.models.yolo_detector import YoloDetector
+
+        det = YoloDetector(detector)
+
+    # A wide aerial frame (detector) wants the finer layout by default.
+    if farm is None and det is not None:
+        farm = "aerial"
     layout = None
     if farm is not None:
         from solarscan.geo import FarmLayout
 
-        layout = FarmLayout.sample() if farm == "sample" else FarmLayout.from_yaml(farm)
+        presets = {"sample": FarmLayout.sample, "aerial": FarmLayout.sample_aerial}
+        layout = presets[farm]() if farm in presets else FarmLayout.from_yaml(farm)
 
-    report = run_pipeline(input, classifier=classifier, model_version=model_version, farm=layout)
+    report = run_pipeline(
+        input, detector=det, classifier=classifier, model_version=model_version, farm=layout
+    )
 
     stem = input.stem
     json_path = out / f"{stem}_report.json"
     json_path.write_text(report.model_dump_json(indent=2))
 
+    # Annotated thermal overlay (all detected modules + highlighted faults).
+    from PIL import Image as _Image
+
+    from solarscan.serve.render import draw_overlay
+
+    overlay_path = out / f"{stem}_overlay.png"
+    draw_overlay(_Image.open(input), report.faults, report.detections).save(overlay_path)
+
     map_png = None
-    extra_lines = []
+    extra_lines = [f"  Overlay: {overlay_path}"]
     if layout is not None:
         from solarscan.geo import render_fault_map_html, render_fault_map_png, write_geojson
 
@@ -74,7 +97,10 @@ def demo(
 
     pdf_path = write_pdf_report(report, out / f"{stem}_report.pdf", map_image=map_png)
 
-    console.print(f"[green]Done.[/green] {report.summary.n_faults} fault(s) found.")
+    s = report.summary
+    console.print(
+        f"[green]Done.[/green] {s.n_modules_inspected} modules inspected, {s.n_faults} fault(s)."
+    )
     console.print(f"  JSON: {json_path}")
     console.print(f"  PDF:  {pdf_path}")
     for line in extra_lines:
@@ -96,6 +122,21 @@ def train(
     if epochs is not None:
         cfg.train.epochs = epochs
     train_classifier(cfg, out_dir=out, limit=limit)
+
+
+@app.command(name="train-detector")
+def train_detector_cmd(
+    data: Path = typer.Option(
+        Path("configs/zenodo_uav.yaml"), "--data", help="Ultralytics data.yaml."
+    ),
+    model: str = typer.Option("yolo11n.pt", "--model", help="Base YOLO weights."),
+    epochs: int = typer.Option(100, "--epochs"),
+    out: Path = typer.Option(Path("runs/detector"), "--out", "-o"),
+) -> None:
+    """Train the Stage-1 module detector on the Zenodo UAV set. Requires `--extra ml`."""
+    from solarscan.training import train_detector
+
+    train_detector(data_yaml=data, model=model, epochs=epochs, out_dir=out)
 
 
 @app.command()

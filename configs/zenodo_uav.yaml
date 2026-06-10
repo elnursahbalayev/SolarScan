@@ -1,0 +1,9 @@
+# Ultralytics data config for the Stage-1 module detector.
+# Zenodo UAV thermal PV dataset (record 16420123) — single-class panel detection
+# on 640x512 thermal frames. Fetch via: python data/download.py zenodo-uav-thermal
+path: data/raw/zenodo-uav-thermal/uav_pv
+train: train/images
+val: val/images
+test: test/images
+names:
+  0: module
