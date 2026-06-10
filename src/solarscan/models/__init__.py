@@ -6,6 +6,12 @@ models (Phase 1) are interchangeable.
 """
 
 from solarscan.models.base import Detector, FaultClassifier
-from solarscan.models.stub import StubClassifier, StubDetector
+from solarscan.models.stub import StubClassifier, StubDetector, WholeFrameDetector
 
-__all__ = ["Detector", "FaultClassifier", "StubClassifier", "StubDetector"]
+__all__ = [
+    "Detector",
+    "FaultClassifier",
+    "StubClassifier",
+    "StubDetector",
+    "WholeFrameDetector",
+]

@@ -15,7 +15,13 @@ from PIL import Image
 
 from solarscan.geo.farm import FarmLayout
 from solarscan.geo.georef import georeference_detections, georeference_faults
-from solarscan.models import Detector, FaultClassifier, StubClassifier, StubDetector
+from solarscan.models import (
+    Detector,
+    FaultClassifier,
+    StubClassifier,
+    StubDetector,
+    WholeFrameDetector,
+)
 from solarscan.report.yield_loss import estimate_module_loss_kwh
 from solarscan.schemas import Fault, InspectionReport, ReportSummary
 from solarscan.taxonomy import default_severity, is_anomaly, yield_loss_fraction
@@ -36,9 +42,9 @@ def run_pipeline(
     where the classifier (trained on a different IR dataset) is not calibrated for
     the source camera. The report then lists detected/located modules, no faults.
     """
-    detector = detector or StubDetector()
+    detector = detector or WholeFrameDetector()
     classifier = classifier or StubClassifier()
-    stub_detector = isinstance(detector, StubDetector)
+    untrained_detector = isinstance(detector, (WholeFrameDetector, StubDetector))
     stub_classifier = isinstance(classifier, StubClassifier)
 
     image_path = Path(image_path)
@@ -95,15 +101,15 @@ def run_pipeline(
             "IR dataset and is not calibrated for this source camera (domain gap). "
             "See the model card for classifier performance on labelled IR data."
         )
-        if stub_detector:
-            notes.insert(0, "Detector is the heuristic stub (frame tiling) — not a trained model.")
+        if untrained_detector:
+            notes.insert(0, "No trained detector supplied — whole frame treated as one module.")
     else:
         notes.append(
             "Yield-loss figures are estimates (module rated power x fault loss-fraction "
             "x peak-sun-hours), provided to prioritise O&M, not as metered values."
         )
-        if stub_detector or stub_classifier:
-            notes.insert(0, "Output uses a heuristic stub model — not a validated detector.")
+        if stub_classifier:
+            notes.insert(0, "Output uses a heuristic stub classifier — not a validated model.")
     if farm is not None:
         notes.append(
             f"Locations georeferenced against farm layout '{farm.name}'"

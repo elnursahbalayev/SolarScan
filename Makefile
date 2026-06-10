@@ -17,8 +17,9 @@ demo:              ## Run the end-to-end Phase-0 slice on a sample thermal image
 serve:             ## Launch the web demo + API (stub model)
 	uv run uvicorn solarscan.serve.api:app --reload --port 8000
 
-serve-model:       ## Launch the web demo + API with the trained model
+serve-model:       ## Launch the web demo + API with the trained classifier + detector
 	SOLARSCAN_CHECKPOINT=runs/convnext_tiny/best.pt \
+	SOLARSCAN_DETECTOR=runs/detector/weights/best.pt \
 		uv run uvicorn solarscan.serve.api:app --port 8000
 
 # --- quality ---

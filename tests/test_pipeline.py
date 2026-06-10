@@ -16,9 +16,9 @@ def test_pipeline_flags_hot_region(tmp_path):
     _make_image(img, color=255)  # very bright -> hot-spot in the stub
     report = run_pipeline(img)
     assert isinstance(report, InspectionReport)
-    assert report.summary.n_modules_inspected > 1  # detector tiles the frame
-    assert report.summary.n_faults == report.summary.n_modules_inspected
-    assert all(f.fault_class.value == "Hot-Spot" for f in report.faults)
+    assert report.summary.n_modules_inspected == 1  # whole crop = one module
+    assert report.summary.n_faults == 1
+    assert report.faults[0].fault_class.value == "Hot-Spot"
 
 
 def test_pipeline_clears_cool_region(tmp_path):

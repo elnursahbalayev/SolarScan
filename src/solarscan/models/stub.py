@@ -22,11 +22,24 @@ def _seed_from_image(image: Image) -> int:
     return int.from_bytes(digest[:4], "big")
 
 
-class StubDetector:
-    """Tiles the frame into a grid, treating each tile as a candidate module.
+class WholeFrameDetector:
+    """Treats the whole image as a single module.
 
-    A real detector (Phase 1) replaces this with learned panel boxes; the grid is
-    enough to make the end-to-end slice surface localised hot regions.
+    The honest default for a pre-cropped module image: classify the one module it
+    contains. Wide aerial frames use the trained ``YoloDetector`` instead.
+    """
+
+    def detect(self, image: Image) -> list[Detection]:
+        w, h = image.size
+        return [Detection(bbox=BBox(x=0, y=0, w=float(w), h=float(h)), score=1.0)]
+
+
+class StubDetector:
+    """Tiles the frame into a grid (Phase-0 placeholder; not used by default).
+
+    Kept for experimentation only — tiling an arbitrary frame invents module
+    boundaries, so the pipeline defaults to ``WholeFrameDetector`` for crops and a
+    trained detector for aerial frames.
     """
 
     def __init__(self, grid: tuple[int, int] = (5, 4)) -> None:

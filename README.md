@@ -46,12 +46,14 @@ uv run solarscan demo -i assets/sample_aerial.jpg \
     -d runs/detector/weights/best.pt --detect-only
 ```
 
-Or launch the **web try-it demo** (drag in a thermal image → annotated overlay + fault map + downloadable PDF):
+Or launch the **web try-it demo** — it auto-routes: a single module crop is classified
+(fault type + severity + yield loss); a wide aerial frame is detected & georeferenced
+(detect-only, no unvalidated fault claims):
 
 ```bash
 uv sync --extra serve --extra geo
 make serve              # stub model  → open http://localhost:8000
-make serve-model        # trained model (needs runs/convnext_tiny/best.pt + the ml extra)
+make serve-model        # trained classifier + detector (needs the ml extra)
 ```
 
 The same service exposes `POST /inspect` (multipart image) for programmatic use.

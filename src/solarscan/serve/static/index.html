@@ -68,9 +68,10 @@
 <main>
   <div id="drop" class="drop">
     <p><b>Drop a thermal image here</b> or click to choose a file</p>
-    <p class="tag">Grayscale IR module/array crops work best. No image handy?</p>
+    <p class="tag">Single IR module crops are classified; wide aerial frames are detected &amp; mapped. No image handy?</p>
     <div class="row">
-      <button id="sampleBtn" class="ghost" type="button">Try the sample image</button>
+      <button id="sampleBtn" class="ghost" type="button">Try a module crop</button>
+      <button id="aerialBtn" class="ghost" type="button">Try an aerial frame</button>
     </div>
     <input id="file" type="file" accept="image/*" class="hidden" />
   </div>
@@ -78,6 +79,7 @@
   <div id="loading" class="hidden"><div class="spinner"></div><p style="text-align:center" class="tag">Inspecting…</p></div>
 
   <section id="results" class="hidden">
+    <p><span class="badge" id="modeChip"></span></p>
     <div class="cards">
       <div class="card"><div class="k">Modules inspected</div><div class="v" id="mInspected">—</div></div>
       <div class="card"><div class="k">Faults found</div><div class="v" id="mFaults">—</div></div>
@@ -111,7 +113,10 @@
 const $ = (id) => document.getElementById(id);
 const drop = $("drop"), fileInput = $("file");
 
-fetch("/health").then(r => r.json()).then(h => { $("modelBadge").textContent = "model: " + h.model; });
+fetch("/health").then(r => r.json()).then(h => {
+  const det = h.detector && h.detector !== "none" ? " · detector: " + h.detector : "";
+  $("modelBadge").textContent = "classifier: " + h.classifier + det;
+});
 
 drop.addEventListener("click", () => fileInput.click());
 drop.addEventListener("dragover", e => { e.preventDefault(); drop.classList.add("drag"); });
@@ -121,11 +126,12 @@ drop.addEventListener("drop", e => {
   if (e.dataTransfer.files.length) inspect(e.dataTransfer.files[0]);
 });
 fileInput.addEventListener("change", () => { if (fileInput.files.length) inspect(fileInput.files[0]); });
-$("sampleBtn").addEventListener("click", async (e) => {
-  e.stopPropagation();
-  const blob = await (await fetch("/static/sample_thermal.png")).blob();
-  inspect(new File([blob], "sample_thermal.png", { type: "image/png" }));
-});
+async function inspectStatic(name, type) {
+  const blob = await (await fetch("/static/" + name)).blob();
+  inspect(new File([blob], name, { type }));
+}
+$("sampleBtn").addEventListener("click", (e) => { e.stopPropagation(); inspectStatic("sample_thermal.png", "image/png"); });
+$("aerialBtn").addEventListener("click", (e) => { e.stopPropagation(); inspectStatic("sample_aerial.jpg", "image/jpeg"); });
 $("againBtn").addEventListener("click", () => {
   $("results").classList.add("hidden"); drop.classList.remove("hidden");
 });
@@ -148,21 +154,30 @@ async function inspect(file) {
 
 function render(data) {
   const s = data.report.summary;
+  const detectOnly = data.mode === "detect-only";
   $("mInspected").textContent = s.n_modules_inspected;
-  $("mFaults").textContent = s.n_faults;
-  $("mLoss").textContent = (s.estimated_total_yield_loss_kwh ?? 0).toFixed(2) + " kWh/day";
+  $("mFaults").textContent = detectOnly ? "not assessed" : s.n_faults;
+  const loss = s.estimated_total_yield_loss_kwh;
+  $("mLoss").textContent = loss == null ? "n/a" : loss.toFixed(2) + " kWh/day";
+  $("modeChip").textContent = detectOnly ? "Aerial — detection only" : "Module classification";
   $("overlay").src = data.overlay_png;
   if (data.map_png) { $("map").src = data.map_png; $("map").parentElement.classList.remove("hidden"); }
   else { $("map").parentElement.classList.add("hidden"); }
 
   const ranked = [...data.report.faults].sort((a, b) => b.confidence - a.confidence);
-  $("faultRows").innerHTML = ranked.map((f, i) => {
-    const loc = f.location ? f.location.lat.toFixed(5) + ", " + f.location.lon.toFixed(5) : "—";
-    return `<tr><td>${i+1}</td><td>${f.fault_class}</td>
-      <td class="${sevClass(f.severity)}">${f.severity}</td>
-      <td>${f.confidence.toFixed(2)}</td><td>${f.module_id ?? "—"}</td>
-      <td>${loc}</td><td>${Math.round(f.estimated_yield_loss_fraction*100)}%</td></tr>`;
-  }).join("");
+  if (detectOnly) {
+    $("faultRows").innerHTML = `<tr><td colspan="7" style="color:var(--muted)">
+      Fault-type classification not run for this source camera (domain gap) —
+      ${s.n_modules_inspected} modules detected &amp; georeferenced. See notes below.</td></tr>`;
+  } else {
+    $("faultRows").innerHTML = ranked.map((f, i) => {
+      const loc = f.location ? f.location.lat.toFixed(5) + ", " + f.location.lon.toFixed(5) : "—";
+      return `<tr><td>${i+1}</td><td>${f.fault_class}</td>
+        <td class="${sevClass(f.severity)}">${f.severity}</td>
+        <td>${f.confidence.toFixed(2)}</td><td>${f.module_id ?? "—"}</td>
+        <td>${loc}</td><td>${Math.round(f.estimated_yield_loss_fraction*100)}%</td></tr>`;
+    }).join("");
+  }
 
   $("pdfLink").href = data.pdf_url;
   if (data.geojson_url) { $("geojsonLink").href = data.geojson_url; $("geojsonLink").classList.remove("hidden"); }
