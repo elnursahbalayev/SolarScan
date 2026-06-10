@@ -48,23 +48,29 @@ def draw_overlay(
     image: Image.Image,
     faults: list[Fault],
     detections: list[Detection] | None = None,
-    upscale: int = 3,
+    upscale: int | None = None,
     label_faults: bool = True,
 ) -> Image.Image:
     """Render the thermal frame with all detected modules + severity-coloured faults.
 
     Healthy detections (if provided) are drawn as thin green boxes; faults are drawn
     thicker in their severity colour on top. ``label_faults`` adds the class text
-    (turn off for dense wide frames where labels would overlap).
+    (turn off for dense wide frames where labels would overlap). Box thickness scales
+    with the image so lines stay visible whether the input is a 24x40 crop or a
+    640x512 aerial frame. ``upscale`` defaults to 4x for tiny crops, 1x otherwise.
     """
     base = thermal_colormap(image)
+    if upscale is None:
+        upscale = 4 if min(base.size) < 200 else 1
     if upscale > 1:
         base = base.resize((base.width * upscale, base.height * upscale), Image.NEAREST)
     draw = ImageDraw.Draw(base)
+
+    line = max(2, round(min(base.size) / 220))  # visible at any resolution
     try:
+        font = ImageFont.truetype("DejaVuSans-Bold.ttf", max(11, line * 6))
+    except Exception:
         font = ImageFont.load_default()
-    except Exception:  # pragma: no cover
-        font = None
 
     fault_boxes = {(round(f.bbox.x), round(f.bbox.y)) for f in faults if f.bbox}
     for d in detections or []:
@@ -72,17 +78,15 @@ def draw_overlay(
             continue  # drawn below as a fault
         x0, y0 = d.bbox.x * upscale, d.bbox.y * upscale
         x1, y1 = (d.bbox.x + d.bbox.w) * upscale, (d.bbox.y + d.bbox.h) * upscale
-        draw.rectangle([x0, y0, x1, y1], outline=HEALTHY_RGB, width=1)
+        draw.rectangle([x0, y0, x1, y1], outline=HEALTHY_RGB, width=line)
 
     for f in faults:
         if f.bbox is None:
             continue
-        x0 = f.bbox.x * upscale
-        y0 = f.bbox.y * upscale
-        x1 = (f.bbox.x + f.bbox.w) * upscale
-        y1 = (f.bbox.y + f.bbox.h) * upscale
+        x0, y0 = f.bbox.x * upscale, f.bbox.y * upscale
+        x1, y1 = (f.bbox.x + f.bbox.w) * upscale, (f.bbox.y + f.bbox.h) * upscale
         color = SEVERITY_RGB.get(f.severity, (148, 163, 184))
-        draw.rectangle([x0, y0, x1, y1], outline=color, width=2)
+        draw.rectangle([x0, y0, x1, y1], outline=color, width=line + 1)
         if label_faults:
             draw.text((x0 + 2, y0 + 2), f.fault_class.value, fill=color, font=font)
     return base

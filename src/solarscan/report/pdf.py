@@ -73,6 +73,23 @@ def write_pdf_report(
         flow.append(Image(str(map_image), width=15 * cm, height=11.25 * cm))
         flow.append(Spacer(1, 0.5 * cm))
 
+    if not report.faults:
+        flow.append(Paragraph("Faults", styles["Heading2"]))
+        flow.append(
+            Paragraph(
+                f"{report.summary.n_modules_inspected} modules detected and georeferenced. "
+                "Fault-type classification was not performed for this source (see notes).",
+                styles["Normal"],
+            )
+        )
+        if report.notes:
+            flow.append(Spacer(1, 0.4 * cm))
+            flow.append(Paragraph("Notes & assumptions", styles["Heading2"]))
+            for note in report.notes:
+                flow.append(Paragraph(f"• {note}", styles["Normal"]))
+        doc.build(flow)
+        return out_path
+
     flow.append(Paragraph("Faults (severity-ranked)", styles["Heading2"]))
     ranked = sorted(
         report.faults,

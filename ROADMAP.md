@@ -163,7 +163,11 @@ solarscan/
 **Phase 0 — Thin vertical slice (week 1–2).** `thermal crop → classifier → JSON faults → minimal PDF`. Crude but runs end-to-end. De-risks integration; gives an early demo.
 
 **Phase 1 — Detection + classification core (week 3–6).** Train Stage 1 on the Zenodo UAV set, Stage 2 on InfraredSolarModules. Eval harness, per-class metrics, confusion matrix, model card. Tackle class imbalance + synthetic augmentation here.
-> **Status:** Stage 2 classifier ✅ done — `convnext_tiny`, **82.7% acc / 0.704 macro-F1** on held-out test, class-balanced sampling lifts rare faults (Diode-Multi 0.96 recall). See [model card](eval/MODEL_CARD.md). _Next: Stage 1 detector (Ultralytics on the Zenodo UAV set) + synthetic augmentation for the weak classes (Soiling, Cell-Multi, Hot-Spot-Multi)._
+> **Status:** ✅ both stages trained.
+> - **Stage 2 classifier** — `convnext_tiny`, **82.7% acc / 0.704 macro-F1** on held-out test; class-balanced sampling lifts rare faults (Diode-Multi 0.96 recall).
+> - **Stage 1 detector** — YOLO11n on the Zenodo UAV set, **mAP@50 0.995 / mAP@50-95 0.882, P/R 0.988**. Locates every module in a wide aerial thermal frame (`solarscan demo -d <weights> --detect-only`).
+> - **Honest domain-gap handling:** detector (Mavic 3T colour thermal) and classifier (InfraredSolarModules grayscale IR) are different sources, and the aerial set has no fault labels — so aerial runs are **detect-only** (no unvalidated fault claims). Fault-type accuracy is reported only on labelled IR data. See [model card](eval/MODEL_CARD.md).
+> - _Optional next: synthetic augmentation for weak classes (Soiling, Cell-Multi, Hot-Spot-Multi); fault-labelled target-camera data to close the gap._
 
 **Phase 2 — Edge path (week 6–9).** ONNX → TensorRT → INT8 → cross-device benchmark table. **This is the differentiator — give it real time.**
 

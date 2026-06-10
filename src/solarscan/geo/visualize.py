@@ -10,8 +10,10 @@ from __future__ import annotations
 from pathlib import Path
 
 from solarscan.geo.farm import FarmLayout
-from solarscan.schemas import Fault
+from solarscan.schemas import Detection, Fault
 from solarscan.taxonomy import Severity
+
+DETECTED_COLOR = "#4ade80"  # green
 
 SEVERITY_COLOR = {
     Severity.LOW: "#fde047",  # yellow
@@ -74,6 +76,39 @@ def render_fault_map_png(
         for sev, color in SEVERITY_COLOR.items()
     ]
     ax.legend(handles=handles, title="Severity", loc="upper right", fontsize=8)
+    fig.tight_layout()
+    fig.savefig(out_path, dpi=150)
+    plt.close(fig)
+    return out_path
+
+
+def render_detection_map_png(
+    detections: list[Detection], farm: FarmLayout, out_path: str | Path
+) -> Path | None:
+    """Plot georeferenced detected modules (detect-only mode) as green points."""
+    try:
+        import matplotlib
+
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+    except ModuleNotFoundError:
+        return None
+
+    out_path = Path(out_path)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    lons = [d.location.lon for d in detections if d.location]
+    lats = [d.location.lat for d in detections if d.location]
+
+    fig, ax = plt.subplots(figsize=(8, 6))
+    ax.scatter(lons, lats, c=DETECTED_COLOR, s=45, edgecolors="black", linewidths=0.4)
+    ax.set_xlim(farm.lon_min, farm.lon_max)
+    ax.set_ylim(farm.lat_min, farm.lat_max)
+    ax.set_xlabel("Longitude")
+    ax.set_ylabel("Latitude")
+    title = f"Detected modules ({len(lons)}) — {farm.name}"
+    if farm.synthetic:
+        title += "  (synthetic GPS)"
+    ax.set_title(title)
     fig.tight_layout()
     fig.savefig(out_path, dpi=150)
     plt.close(fig)

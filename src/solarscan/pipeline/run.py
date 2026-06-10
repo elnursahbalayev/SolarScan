@@ -14,7 +14,7 @@ from pathlib import Path
 from PIL import Image
 
 from solarscan.geo.farm import FarmLayout
-from solarscan.geo.georef import georeference_faults
+from solarscan.geo.georef import georeference_detections, georeference_faults
 from solarscan.models import Detector, FaultClassifier, StubClassifier, StubDetector
 from solarscan.report.yield_loss import estimate_module_loss_kwh
 from solarscan.schemas import Fault, InspectionReport, ReportSummary
@@ -27,13 +27,19 @@ def run_pipeline(
     classifier: FaultClassifier | None = None,
     model_version: str = "stub-0.1.0",
     farm: FarmLayout | None = None,
+    detect_only: bool = False,
 ) -> InspectionReport:
     """Run all stages on a single image and return the inspection report.
 
-    If ``farm`` is given, faults are georeferenced (module_id + GPS) against it.
+    If ``farm`` is given, results are georeferenced (module_id + GPS) against it.
+    ``detect_only`` skips fault classification entirely — used for aerial frames
+    where the classifier (trained on a different IR dataset) is not calibrated for
+    the source camera. The report then lists detected/located modules, no faults.
     """
     detector = detector or StubDetector()
     classifier = classifier or StubClassifier()
+    stub_detector = isinstance(detector, StubDetector)
+    stub_classifier = isinstance(classifier, StubClassifier)
 
     image_path = Path(image_path)
     image = Image.open(image_path)
@@ -43,7 +49,7 @@ def run_pipeline(
 
     faults: list[Fault] = []
     total_loss_kwh = 0.0
-    for det in detections:
+    for det in [] if detect_only else detections:
         crop = image.crop(
             (
                 int(det.bbox.x),
@@ -68,22 +74,36 @@ def run_pipeline(
         total_loss_kwh += estimate_module_loss_kwh(fault_class)
 
     if farm is not None:
-        georeference_faults(faults, farm, image_w, image_h)
+        if detect_only:
+            georeference_detections(detections, farm, image_w, image_h)
+        else:
+            georeference_faults(faults, farm, image_w, image_h)
 
     summary = ReportSummary(
         n_modules_inspected=len(detections),
         n_faults=len(faults),
         faults_by_class=dict(Counter(f.fault_class.value for f in faults)),
         faults_by_severity=dict(Counter(f.severity.value for f in faults)),
-        estimated_total_yield_loss_kwh=round(total_loss_kwh, 3),
+        estimated_total_yield_loss_kwh=None if detect_only else round(total_loss_kwh, 3),
     )
 
-    notes = [
-        "Yield-loss figures are estimates (module rated power x fault loss-fraction "
-        "x peak-sun-hours), provided to prioritise O&M, not as metered values.",
-    ]
-    if model_version.startswith("stub"):
-        notes.insert(0, "Output uses a heuristic stub model — not a validated detector.")
+    notes = []
+    if detect_only:
+        notes.append(
+            "Detection-only run: modules detected & georeferenced, but fault-type "
+            "classification was NOT performed — the classifier is trained on a different "
+            "IR dataset and is not calibrated for this source camera (domain gap). "
+            "See the model card for classifier performance on labelled IR data."
+        )
+        if stub_detector:
+            notes.insert(0, "Detector is the heuristic stub (frame tiling) — not a trained model.")
+    else:
+        notes.append(
+            "Yield-loss figures are estimates (module rated power x fault loss-fraction "
+            "x peak-sun-hours), provided to prioritise O&M, not as metered values."
+        )
+        if stub_detector or stub_classifier:
+            notes.insert(0, "Output uses a heuristic stub model — not a validated detector.")
     if farm is not None:
         notes.append(
             f"Locations georeferenced against farm layout '{farm.name}'"

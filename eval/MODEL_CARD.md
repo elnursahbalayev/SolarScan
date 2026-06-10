@@ -50,6 +50,25 @@ Confusion matrix: `runs/convnext_tiny/confusion_matrix.png`.
 - The weak classes (Soiling, Hot-Spot-Multi, Cell-Multi) are the visually ambiguous ones with the
   smallest support — the realistic next target for synthetic augmentation and a detector upgrade.
 
+## Stage-1 module detector (YOLO)
+
+Separate model that locates PV modules in **wide aerial thermal frames** so the pipeline
+works on real drone footage, not just pre-cropped modules.
+
+- **Model:** YOLO11n (Ultralytics), fine-tuned from COCO. Input 640×512.
+- **Data:** Zenodo UAV thermal dataset (record 16420123) — DJI Mavic 3T, single class `module`,
+  235/83/35 train/val/test, ~60 modules/frame.
+- **Test metrics:** **mAP@50 = 0.995, mAP@50-95 = 0.882, precision = 0.988, recall = 0.988.**
+
+### ⚠️ Domain gap — detector and classifier are trained on different sources
+The detector (Mavic 3T RGB-colourised thermal) and the classifier (InfraredSolarModules,
+grayscale IR crops) come from **different cameras/datasets**. The Zenodo set has **no
+fault-type labels**, so fault classification on those aerial frames **cannot be validated**
+and is therefore **not performed** — the pipeline runs in **detect-only** mode on aerial input
+(modules detected + georeferenced; no fault claims). Fault classification is reported only on
+the labelled InfraredSolarModules data above. Closing the gap properly requires fault-labelled
+imagery from the target camera (fine-tune/recalibrate, then validate).
+
 ## Edge performance
 
 ONNX export verified against PyTorch (max abs diff 3.3e-6). Dev-baseline latency/throughput

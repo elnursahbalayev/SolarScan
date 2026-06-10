@@ -20,7 +20,7 @@ def train_detector(
 ) -> tuple[Path, dict]:
     from ultralytics import YOLO
 
-    out_dir = Path(out_dir)
+    out_dir = Path(out_dir).resolve()
     yolo = YOLO(model)
     yolo.train(
         data=str(data_yaml),
@@ -34,7 +34,8 @@ def train_detector(
         verbose=True,
     )
     metrics = yolo.val(data=str(data_yaml), split="test", verbose=False)
-    best = out_dir / "weights" / "best.pt"
+    # Use the trainer's actual save_dir (Ultralytics can relocate the run).
+    best = Path(yolo.trainer.save_dir) / "weights" / "best.pt"
     summary = {
         "map50": float(metrics.box.map50),
         "map50_95": float(metrics.box.map),

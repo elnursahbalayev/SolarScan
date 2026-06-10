@@ -33,6 +33,9 @@ def demo(
     farm: str | None = typer.Option(
         None, "--farm", help="Farm YAML, or 'sample' / 'aerial' for a synthetic demo layout."
     ),
+    detect_only: bool = typer.Option(
+        False, "--detect-only", help="Detect + map modules without fault classification (aerial)."
+    ),
 ) -> None:
     """Run the end-to-end pipeline on one image: -> JSON + PDF (+ GeoJSON, map, overlay)."""
     if not input.exists():
@@ -54,6 +57,8 @@ def demo(
         from solarscan.models.yolo_detector import YoloDetector
 
         det = YoloDetector(detector)
+        if detect_only:
+            model_version = f"yolo:{detector.name}"
 
     # A wide aerial frame (detector) wants the finer layout by default.
     if farm is None and det is not None:
@@ -66,7 +71,12 @@ def demo(
         layout = presets[farm]() if farm in presets else FarmLayout.from_yaml(farm)
 
     report = run_pipeline(
-        input, detector=det, classifier=classifier, model_version=model_version, farm=layout
+        input,
+        detector=det,
+        classifier=classifier,
+        model_version=model_version,
+        farm=layout,
+        detect_only=detect_only,
     )
 
     stem = input.stem
@@ -83,7 +93,15 @@ def demo(
 
     map_png = None
     extra_lines = [f"  Overlay: {overlay_path}"]
-    if layout is not None:
+    if layout is not None and detect_only:
+        from solarscan.geo import render_detection_map_png, write_detections_geojson
+
+        gj = write_detections_geojson(report.detections, layout, out / f"{stem}_modules.geojson")
+        extra_lines.append(f"  GeoJSON: {gj}")
+        map_png = render_detection_map_png(report.detections, layout, out / f"{stem}_map.png")
+        if map_png:
+            extra_lines.append(f"  Map PNG: {map_png}")
+    elif layout is not None:
         from solarscan.geo import render_fault_map_html, render_fault_map_png, write_geojson
 
         geojson_path = write_geojson(report.faults, layout, out / f"{stem}_faults.geojson")

@@ -34,3 +34,20 @@ def test_pdf_is_written(tmp_path):
     report = run_pipeline(img)
     out = write_pdf_report(report, tmp_path / "report.pdf")
     assert out.exists() and out.stat().st_size > 0
+
+
+def test_detect_only_skips_classification_but_georeferences(tmp_path):
+    from solarscan.geo import FarmLayout
+
+    img = tmp_path / "hot.png"
+    _make_image(img, color=255)  # would all be "faults" if classified
+    report = run_pipeline(img, farm=FarmLayout.sample(), detect_only=True)
+
+    # No fault claims, but every detected module is located + a PDF still renders.
+    assert report.summary.n_faults == 0
+    assert report.summary.estimated_total_yield_loss_kwh is None
+    assert report.summary.n_modules_inspected == len(report.detections) > 0
+    assert all(d.location is not None and d.module_id for d in report.detections)
+    assert any("Detection-only" in n for n in report.notes)
+    out = write_pdf_report(report, tmp_path / "detonly.pdf")
+    assert out.exists() and out.stat().st_size > 0

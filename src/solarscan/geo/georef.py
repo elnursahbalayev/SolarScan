@@ -6,7 +6,40 @@ import json
 from pathlib import Path
 
 from solarscan.geo.farm import FarmLayout
-from solarscan.schemas import Fault
+from solarscan.schemas import Detection, Fault
+
+
+def georeference_detections(
+    detections: list[Detection], farm: FarmLayout, image_w: float, image_h: float
+) -> list[Detection]:
+    """Attach module_id + GPS to each detected module (detect-only mode)."""
+    for d in detections:
+        module_id, point = farm.locate(d.bbox, image_w, image_h)
+        d.module_id = module_id
+        d.location = point
+    return detections
+
+
+def detections_to_geojson(detections: list[Detection], farm: FarmLayout) -> dict:
+    """GeoJSON FeatureCollection of detected modules (no fault assessment)."""
+    features = [
+        {
+            "type": "Feature",
+            "geometry": {"type": "Point", "coordinates": [d.location.lon, d.location.lat]},
+            "properties": {
+                "module_id": d.module_id,
+                "detection_score": round(d.score, 4),
+                "status": "detected",
+            },
+        }
+        for d in detections
+        if d.location is not None
+    ]
+    return {
+        "type": "FeatureCollection",
+        "properties": {"farm": farm.name, "synthetic": farm.synthetic, "mode": "detection-only"},
+        "features": features,
+    }
 
 
 def georeference_faults(
@@ -55,4 +88,13 @@ def write_geojson(faults: list[Fault], farm: FarmLayout, out_path: str | Path) -
     out_path = Path(out_path)
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(json.dumps(faults_to_geojson(faults, farm), indent=2))
+    return out_path
+
+
+def write_detections_geojson(
+    detections: list[Detection], farm: FarmLayout, out_path: str | Path
+) -> Path:
+    out_path = Path(out_path)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(json.dumps(detections_to_geojson(detections, farm), indent=2))
     return out_path

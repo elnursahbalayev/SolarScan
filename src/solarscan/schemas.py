@@ -31,10 +31,16 @@ class GeoPoint(BaseModel):
 
 
 class Detection(BaseModel):
-    """A region proposed by the detector, before fault classification."""
+    """A region proposed by the detector, before fault classification.
+
+    ``location``/``module_id`` are filled when a detection is georeferenced
+    (detect-only mode), so a module can be mapped without a fault assessment.
+    """
 
     bbox: BBox
     score: float = Field(ge=0.0, le=1.0)
+    location: GeoPoint | None = None
+    module_id: str | None = None
 
 
 class Fault(BaseModel):

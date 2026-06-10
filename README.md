@@ -37,9 +37,13 @@ uv sync                 # core deps only — no GPU needed for the Phase-0 slice
 make demo               # thermal image → JSON + PDF inspection report
 make test               # run the test suite
 
-# georeferenced run (faults → module ID + GPS, GeoJSON, fault map):
+# single-module classification (faults → module ID + GPS, GeoJSON, fault map):
 uv run solarscan demo -i assets/sample_thermal.png --farm sample \
     -c runs/convnext_tiny/best.pt    # drop -c to use the stub model
+
+# wide aerial frame → detect + georeference every module (detect-only, honest):
+uv run solarscan demo -i assets/sample_aerial.jpg \
+    -d runs/detector/weights/best.pt --detect-only
 ```
 
 Or launch the **web try-it demo** (drag in a thermal image → annotated overlay + fault map + downloadable PDF):
@@ -59,7 +63,7 @@ This repo is built in public, in phases (see [ROADMAP.md](ROADMAP.md)):
 | Phase | What | Status |
 |---|---|---|
 | 0 | End-to-end slice (stub model → report) | ✅ runnable |
-| 1 | Fault classifier on public data — **82.7% acc / 0.704 macro-F1** ([model card](eval/MODEL_CARD.md)) | ✅ classifier done; detector next |
+| 1 | Classifier **82.7% acc / 0.704 macro-F1** + module detector **mAP@50 0.995** ([model card](eval/MODEL_CARD.md)) | ✅ both trained |
 | 2 | Edge path: ONNX export (parity-checked) + benchmark harness — **A4000 FP16 ~20.7k img/s** | ✅ dev done; TensorRT/Jetson rows pending |
 | 3 | Georeferencing + report: faults → module ID + GPS, GeoJSON, fault map, PDF | ✅ on synthetic farm |
 | 4 | Web try-it demo (upload → overlay + map + PDF) | ✅ built; deploy + video pending |
