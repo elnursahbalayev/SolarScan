@@ -130,16 +130,31 @@ solarscan/
    | pytorch | CPU | FP32 | 27.05 | 28.12 | 1,183 |
 
    FP16 already gives a ~1.6× throughput lift over FP32 on the A4000, and ONNX parity is
-   verified (max abs diff 3.3e-6). The Jetson rows below use the **same harness** on the same ONNX:
+   verified (max abs diff 3.3e-6). The Jetson rows below use the **same harness** on the same ONNX.
 
-   | Backend | Device | Precision | FPS | Latency p50/p95 | acc Δ | Power (W) |
+   > ⚠️ **PROJECTED — NOT YET MEASURED.** The table below is an *estimate* for planning only,
+   > pending on-device benchmarking on the actual Orin Nano + NX. These figures must not be
+   > quoted as measured results. They will be replaced with real `solarscan benchmark` output
+   > (and the ⚠️ removed) once the engines are built on the devices.
+   >
+   > **Method:** projected from the measured A4000 batch-1 latency scaled by published Orin
+   > dense-INT8/FP16 throughput (Orin NX 16GB ≈ 50 dense TOPS; Orin Nano 8GB ≈ 20 dense TOPS)
+   > and typical TensorRT INT8 behaviour. At 64×64 the model is launch/memory-bound, not
+   > compute-bound, so real gaps are usually *smaller* than raw TOPS ratios — treat these as
+   > conservative order-of-magnitude estimates, single-stream (batch 1).
+
+   | Backend | Device | Precision | Latency ms (b1) | Throughput (img/s) | macro-F1 Δ | Power (W) |
    |---|---|---|---|---|---|---|
-   | TensorRT | Orin Nano | FP16 | … | … | … | … |
-   | TensorRT | Orin Nano | INT8 | … | … | … | … |
-   | TensorRT | Orin NX | FP16 | … | … | … | … |
-   | TensorRT | Orin NX | INT8 | … | … | … | … |
+   | TensorRT | Orin NX 16GB | FP16 | ~1.5 *(proj.)* | ~650 *(proj.)* | ≈0 | ~15–25 |
+   | TensorRT | Orin NX 16GB | INT8 | ~1.0 *(proj.)* | ~1,000 *(proj.)* | −0.5 to −1.5% *(proj.)* | ~15–25 |
+   | TensorRT | Orin Nano 8GB | FP16 | ~3.0 *(proj.)* | ~330 *(proj.)* | ≈0 | ~7–15 |
+   | TensorRT | Orin Nano 8GB | INT8 | ~2.0 *(proj.)* | ~500 *(proj.)* | −0.5 to −1.5% *(proj.)* | ~7–15 |
 
-5. Show the **accuracy/throughput tradeoff** narrative (INT8 speedup vs accuracy drop) — this is the senior-engineer signal.
+   _(Note: A4000 rows above are batch-32 throughput; Jetson projections are batch-1 single-stream —
+   the relevant metric for in-flight real-time inference — so the two blocks are not directly comparable.)_
+   On-device steps to produce the real numbers: [docs/JETSON.md](docs/JETSON.md).
+
+5. Show the **accuracy/throughput tradeoff** narrative (INT8 speedup vs accuracy drop) — this is the senior-engineer signal. Even the projected INT8 latencies (~1–2 ms) put the model **far inside real-time** for a drone frame budget, which is the point the table needs to make.
 
 ---
 
