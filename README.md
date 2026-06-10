@@ -39,15 +39,18 @@ make test               # run the test suite
 
 # georeferenced run (faults → module ID + GPS, GeoJSON, fault map):
 uv run solarscan demo -i assets/sample_thermal.png --farm sample \
-    -c runs/convnext_nano/best.pt    # drop -c to use the stub model
+    -c runs/convnext_tiny/best.pt    # drop -c to use the stub model
 ```
 
-Or hit the API:
+Or launch the **web try-it demo** (drag in a thermal image → annotated overlay + fault map + downloadable PDF):
 
 ```bash
-uv sync --extra serve
-make serve              # http://localhost:8000  (POST /inspect with a thermal image)
+uv sync --extra serve --extra geo
+make serve              # stub model  → open http://localhost:8000
+make serve-model        # trained model (needs runs/convnext_tiny/best.pt + the ml extra)
 ```
+
+The same service exposes `POST /inspect` (multipart image) for programmatic use.
 
 ## Project status
 
@@ -59,7 +62,7 @@ This repo is built in public, in phases (see [ROADMAP.md](ROADMAP.md)):
 | 1 | Fault classifier on public data — **82.7% acc / 0.704 macro-F1** ([model card](eval/MODEL_CARD.md)) | ✅ classifier done; detector next |
 | 2 | Edge path: ONNX export (parity-checked) + benchmark harness — **A4000 FP16 ~20.7k img/s** | ✅ dev done; TensorRT/Jetson rows pending |
 | 3 | Georeferencing + report: faults → module ID + GPS, GeoJSON, fault map, PDF | ✅ on synthetic farm |
-| 4 | Deployed try-it demo + video | ⬜ |
+| 4 | Web try-it demo (upload → overlay + map + PDF) | ✅ built; deploy + video pending |
 
 > Train it yourself: `python data/download.py infrared-solar-modules && uv run solarscan train`
 

@@ -2,7 +2,7 @@
 
 ## Overview
 - **Task:** IR PV-module fault classification (Stage 2), 12-class IEC-aligned taxonomy.
-- **Model:** `convnext_nano` (timm, ImageNet-pretrained), 3-ch input (grayscale replicated), 64×64.
+- **Model:** `convnext_tiny` (timm, ImageNet-pretrained), 3-ch input (grayscale replicated), 64×64.
 - **Intended use:** Prioritising solar-farm O&M from aerial thermal imagery.
 - **Out of scope:** Safety-critical decisions without human review; metered yield accounting.
 - **Status:** Phase 1 trained model (classifier). Detector (Stage 1) and edge export (Phase 2) pending.
@@ -43,7 +43,7 @@
 | Hot-Spot-Multi | 0.500 | 0.537 | 36 |
 | Soiling | 0.233 | 0.304 | 30 |
 
-Confusion matrix: `runs/convnext_nano/confusion_matrix.png`.
+Confusion matrix: `runs/convnext_tiny/confusion_matrix.png`.
 
 ### Reading the results
 - Balanced sampling pays off on rare-but-separable faults: **Diode-Multi reaches 0.96 recall on 26 test samples** despite being <1% of the data.
@@ -73,6 +73,6 @@ _Pending:_ TensorRT FP16/INT8 on Jetson Orin Nano + Orin NX, via the same harnes
 ## Reproduce
 ```bash
 python data/download.py infrared-solar-modules
-uv run solarscan train --config configs/default.yaml --out runs/convnext_nano
-uv run solarscan evaluate -c runs/convnext_nano/best.pt
+uv run solarscan train --config configs/default.yaml --out runs/convnext_tiny
+uv run solarscan evaluate -c runs/convnext_tiny/best.pt
 ```

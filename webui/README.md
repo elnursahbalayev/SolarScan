@@ -1,16 +1,35 @@
-# Try-it Web UI (Phase 4)
+# Try-it Web UI ✅
 
-The client-facing demo: drag in a thermal image → see the fault overlay → download
-the PDF report. This is the single most important Upwork artifact ("does it work
-on MY data?").
+The client-facing demo: drop in a thermal image → annotated thermal overlay +
+georeferenced fault map + severity-ranked table + downloadable PDF report. This
+is the single most important Upwork artifact ("does it work on MY data?").
 
-**Plan:** a minimal single-page frontend (or Gradio for v1 speed) calling the
-FastAPI `/inspect` endpoint in [`src/solarscan/serve/api.py`](../src/solarscan/serve/api.py).
-Deploy alongside the API (Docker) or to Hugging Face Spaces.
+It's a single static page ([../src/solarscan/serve/static/index.html](../src/solarscan/serve/static/index.html),
+no build step) served by the FastAPI app in
+[../src/solarscan/serve/api.py](../src/solarscan/serve/api.py), which calls the
+same pipeline as the CLI.
 
-For now, exercise the backend directly:
+## Run it
 
 ```bash
-make serve
-curl -F "file=@assets/sample_thermal.png" http://localhost:8000/inspect
+uv sync --extra serve --extra geo
+make serve          # stub model      → http://localhost:8000
+make serve-model    # trained model   (needs runs/convnext_tiny/best.pt + --extra ml)
 ```
+
+Or via Docker:
+
+```bash
+docker compose -f docker/docker-compose.yml up --build
+```
+
+## Endpoints
+- `GET /` — the web UI
+- `GET /health` — status + active model
+- `POST /inspect` — multipart thermal image → report JSON + overlay + map + PDF/GeoJSON URLs
+- `GET /download/{session}/{file}` — fetch the generated PDF / GeoJSON
+
+## Deploy
+The stub image is CPU-only and small — suitable for Hugging Face Spaces or any
+container host. For the trained-model demo, bake the checkpoint into the image (or
+mount it) and set `SOLARSCAN_CHECKPOINT`.

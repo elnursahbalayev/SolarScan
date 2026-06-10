@@ -11,5 +11,8 @@ COPY pyproject.toml README.md ./
 COPY src ./src
 RUN uv pip install --system ".[serve]"
 
+# Serves the stub model by default (no GPU/torch). To serve a trained model,
+# mount a checkpoint and set SOLARSCAN_CHECKPOINT=/path/to/best.pt (+ install
+# the `ml` extra in the image).
 EXPOSE 8000
 CMD ["uvicorn", "solarscan.serve.api:app", "--host", "0.0.0.0", "--port", "8000"]

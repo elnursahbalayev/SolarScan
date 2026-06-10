@@ -14,8 +14,12 @@ install-all:       ## Everything (ml + serve + geo + dev)
 demo:              ## Run the end-to-end Phase-0 slice on a sample thermal image
 	uv run solarscan demo --input assets/sample_thermal.png --out outputs/
 
-serve:             ## Launch the FastAPI inference API
+serve:             ## Launch the web demo + API (stub model)
 	uv run uvicorn solarscan.serve.api:app --reload --port 8000
+
+serve-model:       ## Launch the web demo + API with the trained model
+	SOLARSCAN_CHECKPOINT=runs/convnext_tiny/best.pt \
+		uv run uvicorn solarscan.serve.api:app --port 8000
 
 # --- quality ---
 test:

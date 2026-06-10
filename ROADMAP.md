@@ -120,7 +120,7 @@ solarscan/
 3. Build TensorRT engines: FP16 and INT8 (with a calibration set).
 4. Benchmark harness across **every backend and device**, apples-to-apples.
 
-   **Dev baseline (RTX A4000, measured — batch 32, classifier `convnext_nano`):**
+   **Dev baseline (RTX A4000, measured — batch 32, classifier `convnext_tiny`):**
 
    | Backend | Device | Precision | Mean ms | p95 ms | Throughput (img/s) |
    |---|---|---|---|---|---|
@@ -148,7 +148,7 @@ solarscan/
 **Phase 0 — Thin vertical slice (week 1–2).** `thermal crop → classifier → JSON faults → minimal PDF`. Crude but runs end-to-end. De-risks integration; gives an early demo.
 
 **Phase 1 — Detection + classification core (week 3–6).** Train Stage 1 on the Zenodo UAV set, Stage 2 on InfraredSolarModules. Eval harness, per-class metrics, confusion matrix, model card. Tackle class imbalance + synthetic augmentation here.
-> **Status:** Stage 2 classifier ✅ done — `convnext_nano`, **82.7% acc / 0.704 macro-F1** on held-out test, class-balanced sampling lifts rare faults (Diode-Multi 0.96 recall). See [model card](eval/MODEL_CARD.md). _Next: Stage 1 detector (Ultralytics on the Zenodo UAV set) + synthetic augmentation for the weak classes (Soiling, Cell-Multi, Hot-Spot-Multi)._
+> **Status:** Stage 2 classifier ✅ done — `convnext_tiny`, **82.7% acc / 0.704 macro-F1** on held-out test, class-balanced sampling lifts rare faults (Diode-Multi 0.96 recall). See [model card](eval/MODEL_CARD.md). _Next: Stage 1 detector (Ultralytics on the Zenodo UAV set) + synthetic augmentation for the weak classes (Soiling, Cell-Multi, Hot-Spot-Multi)._
 
 **Phase 2 — Edge path (week 6–9).** ONNX → TensorRT → INT8 → cross-device benchmark table. **This is the differentiator — give it real time.**
 

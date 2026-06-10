@@ -16,7 +16,7 @@ class SiteConfig(BaseModel):
 
 
 class ClassifierConfig(BaseModel):
-    backbone: str = "convnext_nano"
+    backbone: str = "convnext_tiny"
     input_size: tuple[int, int] = (64, 64)
     num_classes: int = 12
     pretrained: bool = True

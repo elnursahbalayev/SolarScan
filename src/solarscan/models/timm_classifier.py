@@ -21,7 +21,7 @@ from solarscan.taxonomy import ALL_CLASSES, FaultClass
 class TimmClassifier(torch.nn.Module):
     def __init__(
         self,
-        backbone: str = "convnext_nano",
+        backbone: str = "convnext_tiny",
         num_classes: int = 12,
         input_size: tuple[int, int] = (64, 64),
         pretrained: bool = True,
